@@ -1,11 +1,15 @@
 package main
 
 import (
+  "flag"
   "fmt"
   "math/rand"
-  "time"
-  "sync"
+  "os"
   "runtime"
+  "strconv"
+  "strings"
+  "sync"
+  "time"
 )
 
 type Lifegame struct {
@@ -39,7 +43,7 @@ func (self *Lifegame) Print() {
     for x:=0; x<self.Width; x++ {
       var s string
       if self.Get(x,y) == 0 {
-        s = ".."
+        s = "__"
       } else {
         s = "[]"
       }
@@ -53,22 +57,22 @@ func (self *Lifegame) CellNext(idx int) int {
   w := self.Width
   delta := [8]int{-w-1, -w, -w+1, -1, 1, w-1, w, w+1}
 
-  num_alive := 0
+  numAlive := 0
   for _, d := range delta {
     i := idx + d
     if 0 <= i && i < len(self.Field) && self.Field[i] != 0 {
-      num_alive++
+      numAlive++
     }
   }
   life := self.Field[idx]
-  if (life==0 && num_alive==3) || (life==1 && (num_alive==2 || num_alive==3)) {
+  if (life==0 && numAlive==3) || (life==1 && (numAlive==2 || numAlive==3)) {
     return 1
   }
   return 0
 }
 
-func (self *Lifegame) Update(num_routine int) {
-  m := len(self.Field)/num_routine
+func (self *Lifegame) Update(numRoutine int) {
+  m := len(self.Field)/numRoutine
   var wg sync.WaitGroup
   for i:=0; i<len(self.Field); i+=m {
     wg.Add(1)
@@ -83,21 +87,36 @@ func (self *Lifegame) Update(num_routine int) {
   self.Field, self.nextField = self.nextField, self.Field
 }
 
-func main() {
-  fmt.Println("CPU:", runtime.NumCPU())
-  numRoutine:= runtime.NumCPU()
-  runtime.GOMAXPROCS(numRoutine)
+func parseSize(size string) (int, int) {
+  sep := strings.Index(size, "x")
+  w, errw := strconv.Atoi(size[:sep])
+  h, errh := strconv.Atoi(size[sep+1:])
+  if errw != nil || errh != nil {
+    fmt.Printf("Invalid flag --size='%s'\n", size)
+    os.Exit(1)
+  }
+  return w, h
+}
 
-  w, h := 10, 10
+func main() {
+  size  := flag.String("size", "10x10", "Size of field. e.g. 10x10")
+  steps := flag.Int("steps", 50, "Number of steps")
+  procs := flag.Int("procs", 1, "Number of procs to run")
+  flag.Parse()
+
+  w, h := parseSize(*size)
+
+  fmt.Printf("Procs: %d\n", *procs)
+  fmt.Printf("Field: %dx%d\n", w, h)
+  runtime.GOMAXPROCS(*procs)
+
   lifegame := NewLifegame(w, h, w*h/4)
   lifegame.Print()
 
-  tend := 50
-  for t:=0; t<tend; t++ {
-    fmt.Println(t)
-    lifegame.Update(numRoutine)
+  for t:=0; t<*steps; t++ {
+    fmt.Println("\n", t)
+    lifegame.Update(*procs)
     lifegame.Print()
-    fmt.Println("\n")
     time.Sleep(time.Second/10)
   }
 }
