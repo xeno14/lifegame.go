@@ -100,7 +100,7 @@ func parseSize(size string) (int, int) {
 
 func main() {
   size  := flag.String("size", "10x10", "Size of field. e.g. 10x10")
-  steps := flag.Int("steps", 50, "Number of steps")
+  steps := flag.Int("steps", 1000, "Number of steps")
   procs := flag.Int("procs", 1, "Number of procs to run")
   flag.Parse()
 
@@ -114,6 +114,8 @@ func main() {
   lifegame.Print()
 
   for t:=0; t<*steps; t++ {
+    print("\033[2J")
+    print("\033[0;0H")
     fmt.Println("\n", t)
     lifegame.Update(*procs)
     lifegame.Print()
